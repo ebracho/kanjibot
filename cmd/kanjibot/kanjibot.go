@@ -1,10 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
+	"os"
 	"regexp"
 	"strings"
 
@@ -12,45 +13,36 @@ import (
 	"github.com/ebracho/twitchbot"
 )
 
-type stringSliceFlags []string
-
-func (s *stringSliceFlags) String() string {
-	return strings.Join(*s, ",")
-}
-
-func (s *stringSliceFlags) Set(value string) error {
-	*s = append(*s, value)
-	return nil
-}
-
-var (
-	twitchUser      string
-	twitchTokenPath string
-	twitchChannels  stringSliceFlags
+const (
+	defaultConfigPath = "config.json"
 )
+
+var cfg struct {
+	TwitchUser  string   `json:"twitchUser"`
+	TwitchToken string   `json:"twitchToken"`
+	Channels    []string `json:"channels"`
+}
 
 var (
 	reKanjiSearch = regexp.MustCompile(`!k ([a-zA-Z ]|\p{Han}|\p{Hiragana}|\p{Katakana})+`)
 )
 
 func main() {
-	flag.StringVar(&twitchUser, "twitch_user", "", "twitch user name")
-	flag.StringVar(&twitchTokenPath, "twitch_token_file", "", "twitch oauth token filepath")
-	flag.Var(&twitchChannels, "channel", "twitch channel to join")
+	cfgPath := flag.String("configPath", defaultConfigPath, "path to kanjibot config file")
 	flag.Parse()
 
-	if twitchUser == "" || twitchTokenPath == "" || twitchChannels == nil {
-		log.Fatalf("Must specify -twitch_user, -twitch_token_file, -channel")
-	}
-
-	tokenBytes, err := ioutil.ReadFile(twitchTokenPath)
+	// Parse config file
+	cfgFile, err := os.Open(*cfgPath)
 	if err != nil {
 		log.Fatal(err)
 	}
-	token := strings.TrimSpace(string(tokenBytes))
+	d := json.NewDecoder(cfgFile)
+	if err := d.Decode(&cfg); err != nil {
+		log.Fatal(err)
+	}
 
 	j := jisho.New()
-	client := twitchbot.New(twitchUser, twitchChannels, token)
+	client := twitchbot.New(cfg.TwitchUser, cfg.Channels, cfg.TwitchToken)
 	client.RegisterHandler(reKanjiSearch, func(channel, text string, c *twitchbot.Client) {
 		parts := strings.Split(text, " ")
 		if len(parts) < 2 {

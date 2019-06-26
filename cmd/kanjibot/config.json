@@ -1,0 +1,9 @@
+{
+    "twitchUser": "YOUR TWITCH USER",
+    "twitchToken": "YOUR TWITCH TOKEN",
+    "channels": [
+        "#CHANNEL1",
+        "#CHANNEL2",
+        "#CHANNEL3"
+    ]
+}
